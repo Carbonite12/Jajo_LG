@@ -80,6 +80,8 @@
 						unsigned int)
 #define MSMFB_ASYNC_BLIT              _IOW(MSMFB_IOCTL_MAGIC, 168, unsigned int)
 #define MSMFB_INVERT_PANEL  _IOW(MSMFB_IOCTL_MAGIC, 169, unsigned int)
+ #define MSMFB_OVERLAY_PREPARE	_IOWR(MSMFB_IOCTL_MAGIC, 169, \
+struct mdp_overlay_list)
 
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
@@ -529,6 +531,23 @@ struct mdp_scale_data {
 };
 
 /**
+ * enum mdp_overlay_pipe_type - Different pipe type set by userspace
+ *
+ * @PIPE_TYPE_AUTO:    Not specified, pipe will be selected according to flags.
+ * @PIPE_TYPE_VIG:     VIG pipe.
+ * @PIPE_TYPE_RGB:     RGB pipe.
+ * @PIPE_TYPE_DMA:     DMA pipe.
+ * @PIPE_TYPE_MAX:     Used to track maximum number of pipe type.
+ */
+enum mdp_overlay_pipe_type {
+        PIPE_TYPE_AUTO = 0,
+        PIPE_TYPE_VIG,
+        PIPE_TYPE_RGB,
+        PIPE_TYPE_DMA,
+        PIPE_TYPE_MAX,
+};
+
+/**
  * struct mdp_overlay - overlay surface structure
  * @src:	Source image information (width, height, format).
  * @src_rect:	Source crop rectangle, portion of image that will be fetched.
@@ -582,6 +601,7 @@ struct mdp_overlay {
 	uint32_t blend_op;
 	uint32_t transp_mask;
 	uint32_t flags;
+	uint32_t pipe_type;
 	uint32_t id;
 	uint32_t user_data[6];
 	uint32_t bg_color;
@@ -978,6 +998,7 @@ struct msmfb_metadata {
 
 #define MDP_MAX_FENCE_FD	32
 #define MDP_BUF_SYNC_FLAG_WAIT	1
+#define MDP_BUF_SYNC_FLAG_RETIRE_FENCE	0x10
 
 struct mdp_buf_sync {
 	uint32_t flags;
@@ -985,6 +1006,7 @@ struct mdp_buf_sync {
 	uint32_t session_id;
 	int *acq_fen_fd;
 	int *rel_fen_fd;
+	int *retire_fen_fd;
 };
 
 struct mdp_async_blit_req_list {
@@ -1008,6 +1030,25 @@ struct mdp_display_commit {
 	struct fb_var_screeninfo var;
 	struct mdp_buf_fence buf_fence;
 	struct mdp_rect roi;
+};
+
+
+/**
+* struct mdp_overlay_list - argument for ioctl MSMFB_OVERLAY_PREPARE
+* @num_overlays: Number of overlay layers as part of the frame.
+* @overlay_list: Pointer to a list of overlay structures identifying
+* the layers as part of the frame
+* @flags: Flags can be used to extend behavior.
+* @processed_overlays: Output parameter indicating how many pipes were
+* successful. If there are no errors this number should
+* match num_overlays. Otherwise it will indicate the last
+* successful index for overlay that couldn't be set.
+*/
+struct mdp_overlay_list {
+	uint32_t num_overlays;
+	struct mdp_overlay **overlay_list;
+	uint32_t flags;
+	uint32_t processed_overlays;
 };
 
 struct mdp_page_protection {
